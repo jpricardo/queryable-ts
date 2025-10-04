@@ -1,0 +1,29 @@
+{
+	"name": "queryable-ts",
+	"version": "1.0.0",
+	"description": "",
+	"homepage": "https://github.com/jpricardo/queryable-ts#readme",
+	"bugs": {
+		"url": "https://github.com/jpricardo/queryable-ts/issues"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/jpricardo/queryable-ts.git"
+	},
+	"license": "ISC",
+	"author": "@jpricardo",
+	"type": "module",
+	"main": "index.ts",
+	"directories": {
+		"lib": "lib"
+	},
+	"scripts": {
+		"test": "vitest",
+		"coverage": "vitest run --coverage"
+	},
+	"devDependencies": {
+		"@vitest/coverage-v8": "^3.2.4",
+		"typescript": "^5.9.3",
+		"vitest": "^3.2.4"
+	}
+}
