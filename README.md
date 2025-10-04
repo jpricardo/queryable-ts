@@ -99,5 +99,6 @@ npm run coverage
 
 The report will be available in the `coverage` directory.
 
-License
+## License
+
 This project is licensed under the ISC License. See the `package.json` file for details.
