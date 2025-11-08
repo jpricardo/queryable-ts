@@ -11,6 +11,7 @@ __screenshots__
 
 # production
 /build
+/dist
 
 # misc
 .DS_Store

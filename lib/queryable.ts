@@ -1,13 +1,9 @@
-import {
-	IteratorType,
-	ModifierType,
-	ResizerType,
-	type Iterator,
-	type Modifier,
-	type Resizer,
-	type Sorter,
-} from './iterator';
-import { QueryBuilder } from './query_builder';
+import type { Modifier } from './modifiers';
+import { Inverter } from './modifiers/inverter';
+import { Iterator, IteratorType } from './modifiers/iterator';
+import { Resizer, ResizerType } from './modifiers/resizer';
+import { Sorter } from './modifiers/sorter';
+import { QueryRunner } from './query-runner';
 
 export interface IQueryable<T> {
 	// Selectors
@@ -37,37 +33,25 @@ export interface IQueryable<T> {
 export class Queryable<T = unknown> implements IQueryable<T> {
 	constructor(private readonly items: T[]) {}
 
-	private readonly builder = new QueryBuilder<T>();
+	private readonly runner = new QueryRunner<T>();
 
 	private addModifier(modifier: Modifier) {
-		this.builder.modifiers.push(modifier);
+		this.runner.modifiers.push(modifier);
 	}
 
 	private run() {
-		return this.builder.run(this.items);
+		return this.runner.run(this.items);
 	}
 
 	// #region Selectors
 	public select<K>(cb: Iterator<T, K>['cb']): Queryable<K> {
-		const iterator: Iterator<T, K> = {
-			modifier: ModifierType.Iterator,
-			type: IteratorType.Select,
-			cb,
-		};
-
-		this.addModifier(iterator as Modifier);
+		this.addModifier(new Iterator(IteratorType.Select, cb) as Modifier);
 
 		return this as unknown as Queryable<K>;
 	}
 
 	public where(cb: Iterator<T, boolean>['cb']): Queryable<T> {
-		const iterator: Iterator<T, boolean> = {
-			modifier: ModifierType.Iterator,
-			type: IteratorType.Where,
-			cb,
-		};
-
-		this.addModifier(iterator as Modifier);
+		this.addModifier(new Iterator(IteratorType.Where, cb) as Modifier);
 
 		return this;
 	}
@@ -75,25 +59,13 @@ export class Queryable<T = unknown> implements IQueryable<T> {
 
 	// #region Resizers
 	public skip(amount: number): Queryable<T> {
-		const resizer: Resizer = {
-			modifier: ModifierType.Resizer,
-			type: ResizerType.Skip,
-			cb: () => amount,
-		};
-
-		this.addModifier(resizer);
+		this.addModifier(new Resizer(ResizerType.Skip, () => amount));
 
 		return this;
 	}
 
 	public take(amount: number): Queryable<T> {
-		const resizer: Resizer = {
-			modifier: ModifierType.Resizer,
-			type: ResizerType.Take,
-			cb: () => amount,
-		};
-
-		this.addModifier(resizer);
+		this.addModifier(new Resizer(ResizerType.Take, () => amount));
 
 		return this;
 	}
@@ -101,37 +73,32 @@ export class Queryable<T = unknown> implements IQueryable<T> {
 
 	// #region Sorters
 	public reverse(): Queryable<T> {
-		this.addModifier({ modifier: ModifierType.Invert });
+		this.addModifier(new Inverter());
 
 		return this;
 	}
 
 	public sort(cb: Sorter<T>['cb']): Queryable<T> {
-		const sorter: Sorter<T> = { modifier: ModifierType.Sorter, cb };
-
-		this.addModifier(sorter as Sorter<unknown>);
+		this.addModifier(new Sorter(cb) as Modifier);
 
 		return this;
 	}
 
 	public sortByAsc(key: keyof T): Queryable<T> {
-		const sorter: Sorter<T> = {
-			modifier: ModifierType.Sorter,
-			cb: (previous: T, current: T) => {
-				const prev = previous[key];
-				const curr = current[key];
+		const sorter = new Sorter<T>((previous: T, current: T) => {
+			const prev = previous[key];
+			const curr = current[key];
 
-				if (typeof prev === 'string' && typeof curr === 'string') {
-					return prev.localeCompare(curr);
-				}
+			if (typeof prev === 'string' && typeof curr === 'string') {
+				return prev.localeCompare(curr);
+			}
 
-				if (typeof prev === 'number' && typeof curr === 'number') {
-					return prev - curr;
-				}
+			if (typeof prev === 'number' && typeof curr === 'number') {
+				return prev - curr;
+			}
 
-				throw new Error(`Invalid key: ${String(key)}`);
-			},
-		};
+			throw new Error(`Invalid key: ${String(key)}`);
+		});
 
 		this.addModifier(sorter as Sorter<unknown>);
 
@@ -139,23 +106,20 @@ export class Queryable<T = unknown> implements IQueryable<T> {
 	}
 
 	public sortByDesc(key: keyof T): Queryable<T> {
-		const sorter: Sorter<T> = {
-			modifier: ModifierType.Sorter,
-			cb: (previous: T, current: T) => {
-				const prev = previous[key];
-				const curr = current[key];
+		const sorter = new Sorter<T>((previous: T, current: T) => {
+			const prev = previous[key];
+			const curr = current[key];
 
-				if (typeof prev === 'string' && typeof curr === 'string') {
-					return curr.localeCompare(prev);
-				}
+			if (typeof prev === 'string' && typeof curr === 'string') {
+				return curr.localeCompare(prev);
+			}
 
-				if (typeof prev === 'number' && typeof curr === 'number') {
-					return curr - prev;
-				}
+			if (typeof prev === 'number' && typeof curr === 'number') {
+				return curr - prev;
+			}
 
-				throw new Error(`Invalid key: ${String(key)}`);
-			},
-		};
+			throw new Error(`Invalid key: ${String(key)}`);
+		});
 
 		this.addModifier(sorter as Sorter<unknown>);
 
@@ -163,20 +127,17 @@ export class Queryable<T = unknown> implements IQueryable<T> {
 	}
 
 	public sortAsc(): Queryable<T> {
-		const sorter: Sorter<T> = {
-			modifier: ModifierType.Sorter,
-			cb: (prev: T, curr: T) => {
-				if (typeof prev === 'string' && typeof curr === 'string') {
-					return prev.localeCompare(curr);
-				}
+		const sorter = new Sorter<T>((prev, curr) => {
+			if (typeof prev === 'string' && typeof curr === 'string') {
+				return prev.localeCompare(curr);
+			}
 
-				if (typeof prev === 'number' && typeof curr === 'number') {
-					return prev - curr;
-				}
+			if (typeof prev === 'number' && typeof curr === 'number') {
+				return prev - curr;
+			}
 
-				throw new Error(`Invalid type`);
-			},
-		};
+			throw new Error(`Invalid type`);
+		});
 
 		this.addModifier(sorter as Sorter<unknown>);
 
@@ -184,20 +145,17 @@ export class Queryable<T = unknown> implements IQueryable<T> {
 	}
 
 	public sortDesc(): Queryable<T> {
-		const sorter: Sorter<T> = {
-			modifier: ModifierType.Sorter,
-			cb: (prev: T, curr: T) => {
-				if (typeof prev === 'string' && typeof curr === 'string') {
-					return curr.localeCompare(prev);
-				}
+		const sorter = new Sorter<T>((prev, curr) => {
+			if (typeof prev === 'string' && typeof curr === 'string') {
+				return curr.localeCompare(prev);
+			}
 
-				if (typeof prev === 'number' && typeof curr === 'number') {
-					return curr - prev;
-				}
+			if (typeof prev === 'number' && typeof curr === 'number') {
+				return curr - prev;
+			}
 
-				throw new Error(`Invalid type`);
-			},
-		};
+			throw new Error(`Invalid type`);
+		});
 
 		this.addModifier(sorter as Sorter<unknown>);
 
