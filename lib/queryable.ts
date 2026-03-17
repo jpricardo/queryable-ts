@@ -74,74 +74,39 @@ export class Queryable<T = unknown> implements IQueryable<T> {
 		return this.chain(new Sorter(cb) as Modifier);
 	}
 
-	public sortByAsc(key: keyof T): Queryable<T> {
-		const sorter = new Sorter<T>((previous: T, current: T) => {
-			const prev = previous[key];
-			const curr = current[key];
+	private makeSorter(direction: 'asc' | 'desc', key?: keyof T): Sorter<T> {
+		return new Sorter<T>((previous: T, current: T) => {
+			const prev = key ? previous[key] : previous;
+			const curr = key ? current[key] : current;
+
+			let result: number;
 
 			if (typeof prev === 'string' && typeof curr === 'string') {
-				return prev.localeCompare(curr);
+				result = prev.localeCompare(curr);
+			} else if (typeof prev === 'number' && typeof curr === 'number') {
+				result = prev - curr;
+			} else {
+				throw new Error(key ? `Invalid key: ${String(key)}` : `Invalid type`);
 			}
 
-			if (typeof prev === 'number' && typeof curr === 'number') {
-				return prev - curr;
-			}
-
-			throw new Error(`Invalid key: ${String(key)}`);
+			return direction === 'asc' ? result : -result;
 		});
+	}
 
-		return this.chain(sorter as Sorter<unknown>);
+	public sortByAsc(key: keyof T): Queryable<T> {
+		return this.chain(this.makeSorter('asc', key) as Sorter<unknown>);
 	}
 
 	public sortByDesc(key: keyof T): Queryable<T> {
-		const sorter = new Sorter<T>((previous: T, current: T) => {
-			const prev = previous[key];
-			const curr = current[key];
-
-			if (typeof prev === 'string' && typeof curr === 'string') {
-				return curr.localeCompare(prev);
-			}
-
-			if (typeof prev === 'number' && typeof curr === 'number') {
-				return curr - prev;
-			}
-
-			throw new Error(`Invalid key: ${String(key)}`);
-		});
-
-		return this.chain(sorter as Sorter<unknown>);
+		return this.chain(this.makeSorter('desc', key) as Sorter<unknown>);
 	}
 
 	public sortAsc(): Queryable<T> {
-		const sorter = new Sorter<T>((prev, curr) => {
-			if (typeof prev === 'string' && typeof curr === 'string') {
-				return prev.localeCompare(curr);
-			}
-
-			if (typeof prev === 'number' && typeof curr === 'number') {
-				return prev - curr;
-			}
-
-			throw new Error(`Invalid type`);
-		});
-
-		return this.chain(sorter as Sorter<unknown>);
+		return this.chain(this.makeSorter('asc') as Sorter<unknown>);
 	}
 
 	public sortDesc(): Queryable<T> {
-		const sorter = new Sorter<T>((prev, curr) => {
-			if (typeof prev === 'string' && typeof curr === 'string') {
-				return curr.localeCompare(prev);
-			}
-
-			if (typeof prev === 'number' && typeof curr === 'number') {
-				return curr - prev;
-			}
-
-			throw new Error(`Invalid type`);
-		});
-
-		return this.chain(sorter as Sorter<unknown>);
+		return this.chain(this.makeSorter('desc') as Sorter<unknown>);
 	}
 	// #endregion
 
