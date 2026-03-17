@@ -4,8 +4,6 @@ import { Iterator, IteratorType } from './modifiers/iterator';
 import { Resizer, ResizerType } from './modifiers/resizer';
 
 export class QueryRunner<T, K = T> {
-	public readonly modifiers: Modifier[] = [];
-
 	private runIterator(items: unknown[], iterator: Iterator<unknown, unknown>): unknown[] {
 		if (iterator.type === IteratorType.Select) {
 			return items.map(iterator.cb);
@@ -20,7 +18,7 @@ export class QueryRunner<T, K = T> {
 
 	private runResizer(items: unknown[], resizer: Resizer): unknown[] {
 		if (resizer.type === ResizerType.Skip) {
-			return items.toSpliced(0, resizer.cb());
+			return items.slice(resizer.cb());
 		}
 
 		if (resizer.type === ResizerType.Take) {
@@ -30,10 +28,10 @@ export class QueryRunner<T, K = T> {
 		return items;
 	}
 
-	public run(items: T[]): K[] {
+	public run(items: T[], modifiers: Modifier[]): K[] {
 		let result: unknown[] = [...items];
 
-		for (const modifier of this.modifiers) {
+		for (const modifier of modifiers) {
 			if (modifier.modifier === ModifierType.Iterator) {
 				result = this.runIterator(result, modifier);
 			}

@@ -31,57 +31,47 @@ export interface IQueryable<T> {
 }
 
 export class Queryable<T = unknown> implements IQueryable<T> {
-	constructor(private readonly items: T[]) {}
+	constructor(private readonly items: T[], private readonly modifiers: Modifier[] = []) {}
 
-	private readonly runner = new QueryRunner<T>();
-
-	private addModifier(modifier: Modifier) {
-		this.runner.modifiers.push(modifier);
+	private chain(modifier: Modifier): Queryable<T> {
+		return new Queryable<T>(this.items, [...this.modifiers, modifier]);
 	}
 
-	private run() {
-		return this.runner.run(this.items);
+	private chainAs<K>(modifier: Modifier): Queryable<K> {
+		return new Queryable<K>(this.items as unknown as K[], [...this.modifiers, modifier]);
+	}
+
+	private run(): T[] {
+		return new QueryRunner<T>().run(this.items, this.modifiers);
 	}
 
 	// #region Selectors
 	public select<K>(cb: Iterator<T, K>['cb']): Queryable<K> {
-		this.addModifier(new Iterator(IteratorType.Select, cb) as Modifier);
-
-		return this as unknown as Queryable<K>;
+		return this.chainAs<K>(new Iterator(IteratorType.Select, cb) as Modifier);
 	}
 
 	public where(cb: Iterator<T, boolean>['cb']): Queryable<T> {
-		this.addModifier(new Iterator(IteratorType.Where, cb) as Modifier);
-
-		return this;
+		return this.chain(new Iterator(IteratorType.Where, cb) as Modifier);
 	}
 	// #endregion
 
 	// #region Resizers
 	public skip(amount: number): Queryable<T> {
-		this.addModifier(new Resizer(ResizerType.Skip, () => amount));
-
-		return this;
+		return this.chain(new Resizer(ResizerType.Skip, () => amount));
 	}
 
 	public take(amount: number): Queryable<T> {
-		this.addModifier(new Resizer(ResizerType.Take, () => amount));
-
-		return this;
+		return this.chain(new Resizer(ResizerType.Take, () => amount));
 	}
 	// #endregion
 
 	// #region Sorters
 	public reverse(): Queryable<T> {
-		this.addModifier(new Inverter());
-
-		return this;
+		return this.chain(new Inverter());
 	}
 
 	public sort(cb: Sorter<T>['cb']): Queryable<T> {
-		this.addModifier(new Sorter(cb) as Modifier);
-
-		return this;
+		return this.chain(new Sorter(cb) as Modifier);
 	}
 
 	public sortByAsc(key: keyof T): Queryable<T> {
@@ -100,9 +90,7 @@ export class Queryable<T = unknown> implements IQueryable<T> {
 			throw new Error(`Invalid key: ${String(key)}`);
 		});
 
-		this.addModifier(sorter as Sorter<unknown>);
-
-		return this;
+		return this.chain(sorter as Sorter<unknown>);
 	}
 
 	public sortByDesc(key: keyof T): Queryable<T> {
@@ -121,9 +109,7 @@ export class Queryable<T = unknown> implements IQueryable<T> {
 			throw new Error(`Invalid key: ${String(key)}`);
 		});
 
-		this.addModifier(sorter as Sorter<unknown>);
-
-		return this;
+		return this.chain(sorter as Sorter<unknown>);
 	}
 
 	public sortAsc(): Queryable<T> {
@@ -139,9 +125,7 @@ export class Queryable<T = unknown> implements IQueryable<T> {
 			throw new Error(`Invalid type`);
 		});
 
-		this.addModifier(sorter as Sorter<unknown>);
-
-		return this;
+		return this.chain(sorter as Sorter<unknown>);
 	}
 
 	public sortDesc(): Queryable<T> {
@@ -157,9 +141,7 @@ export class Queryable<T = unknown> implements IQueryable<T> {
 			throw new Error(`Invalid type`);
 		});
 
-		this.addModifier(sorter as Sorter<unknown>);
-
-		return this;
+		return this.chain(sorter as Sorter<unknown>);
 	}
 	// #endregion
 
