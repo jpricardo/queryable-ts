@@ -4,6 +4,7 @@ type IteratorCb<T, K> = (i: T, idx: number, arr: T[]) => K;
 export enum IteratorType {
 	Select = 'select',
 	Where = 'where',
+	SelectMany = 'select-many',
 }
 
 export class Iterator<T, K> {

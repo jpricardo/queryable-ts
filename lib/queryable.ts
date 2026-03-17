@@ -1,14 +1,22 @@
-import type { Modifier } from './modifiers';
-import { Inverter } from './modifiers/inverter';
-import { Iterator, IteratorType } from './modifiers/iterator';
-import { Resizer, ResizerType } from './modifiers/resizer';
-import { Sorter } from './modifiers/sorter';
+import {
+	GroupBy,
+	Inverter,
+	Iterator,
+	IteratorType,
+	Resizer,
+	ResizerType,
+	Sorter,
+	type IGrouping,
+	type Modifier,
+} from './modifiers';
 import { QueryRunner } from './query-runner';
 
 export interface IQueryable<T> {
 	// Selectors
 	select<K>(cb: Iterator<T, K>['cb']): IQueryable<K>;
 	where(cb: Iterator<T, boolean>['cb']): IQueryable<T>;
+	selectMany<K>(cb: Iterator<T, K[]>['cb']): IQueryable<K>;
+	distinct<K>(...[cb]: T extends string | number | boolean ? [] : [Iterator<T, K>['cb']]): IQueryable<T>;
 
 	// Resizers
 	skip(amount: number): IQueryable<T>;
@@ -28,6 +36,9 @@ export interface IQueryable<T> {
 	sum(...[cb]: T extends number ? [] : [Iterator<T, number>['cb']]): number;
 	count(): number;
 	all(): T[];
+
+	// Grouping
+	groupBy<K>(cb: Iterator<T, K>['cb']): IQueryable<IGrouping<K, T>>;
 }
 
 export class Queryable<T = unknown> implements IQueryable<T> {
@@ -52,6 +63,22 @@ export class Queryable<T = unknown> implements IQueryable<T> {
 
 	public where(cb: Iterator<T, boolean>['cb']): Queryable<T> {
 		return this.chain(new Iterator(IteratorType.Where, cb) as Modifier);
+	}
+
+	public selectMany<K>(cb: Iterator<T, K[]>['cb']): Queryable<K> {
+		return this.chainAs<K>(new Iterator(IteratorType.SelectMany, cb) as Modifier);
+	}
+
+	public distinct<K>(...[cb]: T extends string | number | boolean ? [] : [Iterator<T, K>['cb']]): Queryable<T> {
+		const all = this.all();
+		const seen = new Set<unknown>();
+		const result = all.filter((item, idx, arr) => {
+			const key = cb ? cb(item, idx, arr) : item;
+			if (seen.has(key)) return false;
+			seen.add(key);
+			return true;
+		});
+		return new Queryable<T>(result);
 	}
 	// #endregion
 
@@ -131,6 +158,10 @@ export class Queryable<T = unknown> implements IQueryable<T> {
 
 	public all(): T[] {
 		return this.run();
+	}
+
+	public groupBy<K>(cb: Iterator<T, K>['cb']): Queryable<IGrouping<K, T>> {
+		return this.chainAs<IGrouping<K, T>>(new GroupBy(cb) as Modifier);
 	}
 	// #endregion
 }

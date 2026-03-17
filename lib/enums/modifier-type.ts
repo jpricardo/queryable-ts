@@ -4,4 +4,5 @@ export enum ModifierType {
 	Resizer = 'resizer',
 	Picker = 'picker',
 	Invert = 'invert',
+	GroupBy = 'group-by',
 }
