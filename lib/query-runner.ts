@@ -1,7 +1,5 @@
-import { ModifierType } from './enums/modifier-type';
 import type { Modifier } from './modifiers';
-import { Iterator, IteratorType } from './modifiers/iterator';
-import { Resizer, ResizerType } from './modifiers/resizer';
+import { Inverter, Iterator, IteratorType, Resizer, ResizerType, Sorter } from './modifiers';
 
 export class QueryRunner<T, K = T> {
 	private runIterator(items: unknown[], iterator: Iterator<unknown, unknown>): unknown[] {
@@ -32,19 +30,13 @@ export class QueryRunner<T, K = T> {
 		let result: unknown[] = [...items];
 
 		for (const modifier of modifiers) {
-			if (modifier.modifier === ModifierType.Iterator) {
+			if (modifier instanceof Iterator) {
 				result = this.runIterator(result, modifier);
-			}
-
-			if (modifier.modifier === ModifierType.Resizer) {
+			} else if (modifier instanceof Resizer) {
 				result = this.runResizer(result, modifier);
-			}
-
-			if (modifier.modifier === ModifierType.Invert) {
+			} else if (modifier instanceof Inverter) {
 				result = result.toReversed();
-			}
-
-			if (modifier.modifier === ModifierType.Sorter) {
+			} else if (modifier instanceof Sorter) {
 				result = result.toSorted(modifier.cb);
 			}
 		}
